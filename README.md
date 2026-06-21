@@ -35,14 +35,17 @@ npm test
 
 ### ファイル構成
 
+clasp がプッシュするのは `src/` 配下のみです（`.clasp.json` の `rootDir` を `src` に設定）。
+テストやビルド設定は `src/` の外に置くため、テストファイルが Apps Script へプッシュされることはありません。
+
 | ファイル | 役割 |
 | --- | --- |
-| `コード.js` | アドオン本体（メニュー登録・ダイアログ表示・名前付き範囲の登録） |
-| `namedRangeHelpers.js` | GAS API に依存しない純粋ヘルパー（選択テキスト抽出・名前の検証） |
-| `Dialog.html` | 名前入力ダイアログの UI |
-| `DialogJavaScript.html` | ダイアログのクライアント側スクリプト |
-| `appsscript.json` | Apps Script マニフェスト |
-| `.clasp.json` | clasp 設定（`scriptId` は CI で実値に置換） |
+| `src/コード.js` | アドオン本体（メニュー登録・ダイアログ表示・名前付き範囲の登録） |
+| `src/namedRangeHelpers.js` | GAS API に依存しない純粋ヘルパー（選択テキスト抽出・名前の検証） |
+| `src/Dialog.html` | 名前入力ダイアログの UI |
+| `src/DialogJavaScript.html` | ダイアログのクライアント側スクリプト |
+| `src/appsscript.json` | Apps Script マニフェスト |
+| `.clasp.json` | clasp 設定（`rootDir: src` / `scriptId` は CI で実値に置換） |
 | `test/` | Jest テストとモックヘルパー |
 
 ## Google Workspace 側の設定

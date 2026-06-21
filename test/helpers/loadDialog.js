@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { JSDOM } = require('jsdom');
 
-const projectRoot = path.resolve(__dirname, '..', '..');
+const srcDir = path.resolve(__dirname, '..', '..', 'src');
 
 // GAS のテンプレート展開を再現する。
 // 1) <?!= include('X') ?> を X.html の中身に置き換える。
@@ -13,11 +13,11 @@ const projectRoot = path.resolve(__dirname, '..', '..');
 function resolveTemplate(html) {
   return html
     .replace(/<\?!=\s*include\('([^']+)'\)\s*\?>/g, (_, name) =>
-      fs.readFileSync(path.join(projectRoot, name + '.html'), 'utf8')
+      fs.readFileSync(path.join(srcDir, name + '.html'), 'utf8')
     )
     .replace(/<\?=[\s\S]*?\?>/g, '');
 }
-const html = resolveTemplate(fs.readFileSync(path.join(projectRoot, 'Dialog.html'), 'utf8'));
+const html = resolveTemplate(fs.readFileSync(path.join(srcDir, 'Dialog.html'), 'utf8'));
 
 // Dialog.html を jsdom で読み込み、取り込んだ <script> を実行する。
 // ブラウザ依存 API（google.script.run）はソースを変更せずにテストするため、

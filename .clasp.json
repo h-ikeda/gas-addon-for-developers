@@ -1,6 +1,6 @@
 {
   "scriptId": "SCRIPT_ID_PLACEHOLDER",
-  "rootDir": "",
+  "rootDir": "src",
   "scriptExtensions": [
     ".js",
     ".gs"

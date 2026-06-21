@@ -11,7 +11,7 @@ const vm = require('vm');
 const SCRIPT_FILES = ['namedRangeHelpers.js', 'コード.js'];
 const sources = SCRIPT_FILES.map((name) => ({
   name,
-  code: fs.readFileSync(path.resolve(__dirname, '..', '..', name), 'utf8'),
+  code: fs.readFileSync(path.resolve(__dirname, '..', '..', 'src', name), 'utf8'),
 }));
 
 // 各スクリプトはトップレベルでグローバル関数を宣言している純粋な Apps Script ファイル。
