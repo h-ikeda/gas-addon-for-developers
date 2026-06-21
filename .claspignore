@@ -1,0 +1,10 @@
+# clasp push 対象から除外する設定（.gitignore 形式）。
+# 取りこぼしを防ぐため「全て無視 → 必要なファイルだけ許可」方式にする。
+**/**
+
+# Apps Script プロジェクトへ実際にプッシュするファイル
+!appsscript.json
+!コード.js
+!namedRangeHelpers.js
+!Dialog.html
+!DialogJavaScript.html
