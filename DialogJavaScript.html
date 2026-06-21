@@ -1,0 +1,48 @@
+<script>
+  // ダイアログを開いたら入力欄にフォーカスし、初期値（選択テキスト）を全選択して
+  // すぐ上書き入力できるようにする。
+  window.addEventListener('load', function() {
+    var input = document.getElementById('nameInput');
+    input.focus();
+    input.select();
+  });
+
+  // Enter キーでも OK を実行できるようにする
+  document.getElementById('nameInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      submitName();
+    }
+  });
+
+  // 入力された名前をサーバ（setNamedRange）へ送り、選択範囲を名前付き範囲に設定する
+  function submitName() {
+    var input = document.getElementById('nameInput');
+    var status = document.getElementById('status');
+    var submitBtn = document.getElementById('submitBtn');
+    var name = input.value.trim();
+
+    if (!name) {
+      status.style.color = '#d93025';
+      status.innerText = '名前を入力してください。';
+      return;
+    }
+
+    submitBtn.disabled = true;
+    status.style.color = '#666';
+    status.innerText = '設定中...';
+
+    google.script.run
+      .withSuccessHandler(function(msg) {
+        status.style.color = '#188038';
+        status.innerText = msg;
+        setTimeout(function() { google.script.host.close(); }, 1000);
+      })
+      .withFailureHandler(function(err) {
+        status.style.color = '#d93025';
+        status.innerText = 'エラー: ' + err.message;
+        submitBtn.disabled = false;
+      })
+      .setNamedRange(name);
+  }
+</script>

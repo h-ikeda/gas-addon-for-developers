@@ -1,0 +1,19 @@
+{
+  "name": "gas-addon-for-developers",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Google Docs アドオン: 開発用の簡単なツール集",
+  "scripts": {
+    "test": "jest"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "<rootDir>/test/**/*.test.js"
+    ]
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jsdom": "^25.0.1"
+  }
+}

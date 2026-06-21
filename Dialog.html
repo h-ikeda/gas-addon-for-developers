@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 15px; color: #333; font-size: 13px; }
+      label { display: block; margin-bottom: 6px; font-weight: 500; }
+      #nameInput {
+        width: 100%; box-sizing: border-box; padding: 8px;
+        border: 1px solid #dadce0; border-radius: 4px; font-size: 13px; margin-bottom: 12px;
+      }
+      .actions { text-align: right; }
+      .btn {
+        border: none; padding: 8px 16px; border-radius: 4px;
+        cursor: pointer; font-weight: 500; font-size: 13px;
+      }
+      .btn-cancel { background-color: #f1f3f4; color: #3c4043; margin-right: 8px; }
+      .btn-submit { background-color: #1a73e8; color: white; }
+      .btn-submit:disabled { background-color: #dadce0; cursor: not-allowed; }
+      #status { margin-top: 10px; min-height: 1em; }
+    </style>
+  </head>
+  <body>
+    <label for="nameInput">名前付き範囲の名前</label>
+    <input type="text" id="nameInput" value="<?= defaultName ?>">
+
+    <div class="actions">
+      <button id="cancelBtn" class="btn btn-cancel" onclick="google.script.host.close()">キャンセル</button>
+      <button id="submitBtn" class="btn btn-submit" onclick="submitName()">OK</button>
+    </div>
+
+    <div id="status"></div>
+
+    <!-- クライアント側スクリプトは DialogJavaScript.html に分離し、テンプレートで取り込む -->
+    <?!= include('DialogJavaScript') ?>
+  </body>
+</html>
