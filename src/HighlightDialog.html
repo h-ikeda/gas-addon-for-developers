@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 15px; color: #333; font-size: 13px; }
+      p { margin: 0 0 12px; }
+      .actions { text-align: right; }
+      .btn {
+        border: none; padding: 8px 16px; border-radius: 4px;
+        cursor: pointer; font-weight: 500; font-size: 13px;
+      }
+      .btn-close { background-color: #1a73e8; color: white; }
+      .btn-close:disabled { background-color: #dadce0; cursor: not-allowed; }
+      #status { margin-top: 10px; min-height: 1em; }
+    </style>
+  </head>
+  <body>
+    <p>名前付き範囲をハイライト表示中です。<br>「閉じる」を押すと元の表示に戻ります。</p>
+
+    <div class="actions">
+      <button id="closeBtn" class="btn btn-close" onclick="stopHighlight()">閉じる</button>
+    </div>
+
+    <div id="status"></div>
+
+    <!-- クライアント側スクリプトは HighlightDialogJavaScript.html に分離し、テンプレートで取り込む -->
+    <?!= include('HighlightDialogJavaScript') ?>
+  </body>
+</html>

@@ -8,6 +8,7 @@ function onOpen(e) {
   DocumentApp.getUi()
     .createAddonMenu()
     .addItem('選択範囲を名前付き範囲に設定', 'showNamedRangeDialog')
+    .addItem('名前付き範囲をハイライト', 'highlightNamedRanges')
     .addToUi();
 }
 
@@ -56,4 +57,103 @@ function setNamedRange(name) {
   const trimmedName = name.trim();
   doc.addNamedRange(trimmedName, selection);
   return `「${trimmedName}」を名前付き範囲に設定しました。`;
+}
+
+// ドキュメント内の名前付き範囲をすべてハイライト表示し、
+// 停止用の小さな非ブロッキング（モードレス）ダイアログを開く。
+function highlightNamedRanges() {
+  const doc = DocumentApp.getActiveDocument();
+
+  // 既にハイライト中（前回のダイアログを×で閉じた等）なら、まず元へ戻してから貼り直す。
+  // そうしないと「ハイライト色」を元の色として記録してしまう。
+  clearNamedRangeHighlight();
+
+  const namedRanges = doc.getNamedRanges();
+  if (!namedRanges || namedRanges.length === 0) {
+    DocumentApp.getUi().alert('名前付き範囲がありません。');
+    return;
+  }
+
+  // 元の背景色をスナップショットに記録しつつハイライトを適用する。
+  // ダイアログの「閉じる」は別実行になりグローバル変数は引き継がれないため、
+  // 復元用データは DocumentProperties に永続化しておく。
+  const snapshot = applyHighlight(namedRanges, HIGHLIGHT_COLOR);
+  PropertiesService.getDocumentProperties()
+    .setProperty(HIGHLIGHT_SNAPSHOT_KEY, JSON.stringify(snapshot));
+
+  const htmlOutput = HtmlService.createTemplateFromFile('HighlightDialog')
+    .evaluate()
+    .setWidth(320)
+    .setHeight(120)
+    .setTitle('名前付き範囲のハイライト');
+  DocumentApp.getUi().showModelessDialog(htmlOutput, '名前付き範囲のハイライト');
+}
+
+// 各名前付き範囲のテキストへ背景色を付け、元の背景色を復元用スナップショットとして返す。
+function applyHighlight(namedRanges, color) {
+  const snapshot = [];
+  for (let n = 0; n < namedRanges.length; n++) {
+    const rangeElements = namedRanges[n].getRange().getRangeElements();
+    const elementSnapshots = [];
+    for (let i = 0; i < rangeElements.length; i++) {
+      const rangeElement = rangeElements[i];
+      const element = rangeElement.getElement();
+
+      // テキストとして編集できない要素（インライン画像・水平線など）は色を付けられないので飛ばす。
+      if (!element || typeof element.editAsText !== 'function') {
+        continue;
+      }
+      const text = element.editAsText();
+      const bounds = getRangeElementBounds(rangeElement, text.getText().length);
+      if (!bounds) {
+        continue;
+      }
+
+      const runs = computeBackgroundColorRuns(text, bounds.start, bounds.end);
+      text.setBackgroundColor(bounds.start, bounds.end, color);
+      elementSnapshots.push({ runs: runs });
+    }
+    snapshot.push({ elements: elementSnapshots });
+  }
+  return snapshot;
+}
+
+// ハイライトを解除し、保存しておいた元の背景色へ戻す。停止ダイアログの「閉じる」から呼ばれる。
+function clearNamedRangeHighlight() {
+  const props = PropertiesService.getDocumentProperties();
+  const raw = props.getProperty(HIGHLIGHT_SNAPSHOT_KEY);
+  if (!raw) {
+    // ハイライト中でなければ何もしない（×で閉じた後の再実行などでも安全に呼べる）。
+    return;
+  }
+
+  const snapshot = JSON.parse(raw);
+  const namedRanges = DocumentApp.getActiveDocument().getNamedRanges();
+  restoreHighlight(namedRanges, snapshot);
+  props.deleteProperty(HIGHLIGHT_SNAPSHOT_KEY);
+}
+
+// スナップショットに記録した元の背景色を、対応するテキスト要素へ書き戻す。
+// applyHighlight と同じ順序で名前付き範囲・テキスト要素をたどることで対応付ける。
+function restoreHighlight(namedRanges, snapshot) {
+  for (let n = 0; n < namedRanges.length && n < snapshot.length; n++) {
+    const rangeElements = namedRanges[n].getRange().getRangeElements();
+    const elementSnapshots = snapshot[n].elements;
+    let si = 0;
+    for (let i = 0; i < rangeElements.length; i++) {
+      const element = rangeElements[i].getElement();
+      if (!element || typeof element.editAsText !== 'function') {
+        continue;
+      }
+      const elementSnapshot = elementSnapshots[si++];
+      if (!elementSnapshot) {
+        continue;
+      }
+      const text = element.editAsText();
+      for (let r = 0; r < elementSnapshot.runs.length; r++) {
+        const run = elementSnapshot.runs[r];
+        text.setBackgroundColor(run.start, run.end, run.color);
+      }
+    }
+  }
 }

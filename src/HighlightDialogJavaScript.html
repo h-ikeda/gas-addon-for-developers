@@ -1,0 +1,23 @@
+<script>
+  // 「閉じる」を押したらサーバ（clearNamedRangeHighlight）でハイライトを解除し、
+  // 元の背景色へ戻してからダイアログを閉じる。
+  function stopHighlight() {
+    var closeBtn = document.getElementById('closeBtn');
+    var status = document.getElementById('status');
+
+    closeBtn.disabled = true;
+    status.style.color = '#666';
+    status.innerText = '元に戻しています...';
+
+    google.script.run
+      .withSuccessHandler(function() {
+        google.script.host.close();
+      })
+      .withFailureHandler(function(err) {
+        status.style.color = '#d93025';
+        status.innerText = 'エラー: ' + err.message;
+        closeBtn.disabled = false;
+      })
+      .clearNamedRangeHighlight();
+  }
+</script>
