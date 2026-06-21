@@ -97,3 +97,21 @@ clasp login
 | `GAS_DEPLOYMENT_ID` | 更新対象のデプロイ ID（`clasp deployments` で確認） |
 
 > 認証情報を Secret に保存する都合上、リポジトリの公開範囲やアクセス権には注意してください。
+
+## マーケットプレイス掲載用アセット
+
+Google Workspace Marketplace（限定公開）のストア掲載で使用する画像を `assets/` に用意しています。
+
+| ファイル | サイズ | 用途 |
+| --- | --- | --- |
+| `assets/icon_32.png` | 32×32 | アプリアイコン（小） |
+| `assets/icon_128.png` | 128×128 | アプリアイコン（大） |
+| `assets/banner_220x140.png` | 220×140 | プロモーションバナー |
+| `assets/screenshot.png` | 1280×800 | 機能イメージ（スクリーンショット） |
+
+画像は `assets/generate_assets.py`（Pillow 使用）で再生成できます。
+
+```bash
+pip install Pillow
+python3 assets/generate_assets.py
+```
