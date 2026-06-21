@@ -8,7 +8,7 @@ const vm = require('vm');
 // テストでも同じ状態を再現するため、対象の全スクリプトを同一コンテキストで評価する。
 // （namedRangeHelpers.js の純粋関数を コード.js から呼び出せるようにする。）
 // 内容は不変なので、モジュール読み込み時に一度だけ読み込んでキャッシュする。
-const SCRIPT_FILES = ['namedRangeHelpers.js', 'コード.js'];
+const SCRIPT_FILES = ['namedRangeHelpers.js', 'highlightHelpers.js', 'コード.js'];
 const sources = SCRIPT_FILES.map((name) => ({
   name,
   code: fs.readFileSync(path.resolve(__dirname, '..', '..', 'src', name), 'utf8'),

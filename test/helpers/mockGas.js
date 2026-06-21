@@ -29,6 +29,43 @@ function makeSelection(text) {
   };
 }
 
+// 背景色ハイライト用のテキスト要素モック。editAsText は自身を返し、
+// getTextAttributeIndices / getBackgroundColor / setBackgroundColor を備える。
+//   opts.attributeIndices   getTextAttributeIndices() が返す書式変更位置
+//   opts.backgroundColorAt  offset を受け取り背景色を返す関数（既定は常に null）
+function makeTextElement(text, opts) {
+  const o = opts || {};
+  const element = {
+    getText: jest.fn(() => text),
+    editAsText: jest.fn(() => element),
+    getTextAttributeIndices: jest.fn(() => o.attributeIndices || []),
+    getBackgroundColor: jest.fn((offset) =>
+      o.backgroundColorAt ? o.backgroundColorAt(offset) : null
+    ),
+    setBackgroundColor: jest.fn(),
+  };
+  return element;
+}
+
+// 名前付き範囲を構成する RangeElement のモック。element は makeTextElement 等。
+function makeNamedRangeElement(element, partial, startOffset, endOffsetInclusive) {
+  return {
+    getElement: jest.fn(() => element),
+    isPartial: jest.fn(() => !!partial),
+    getStartOffset: jest.fn(() => startOffset || 0),
+    getEndOffsetInclusive: jest.fn(() => endOffsetInclusive),
+  };
+}
+
+// 名前付き範囲（NamedRange）のモック。getRange().getRangeElements() で構成要素を返す。
+function makeNamedRange(rangeElements) {
+  const range = { getRangeElements: jest.fn(() => rangeElements) };
+  return {
+    getRange: jest.fn(() => range),
+    _range: range,
+  };
+}
+
 /**
  * GAS 環境一式を生成する。
  *
@@ -40,10 +77,12 @@ function createGasEnv(options) {
   const opts = options || {};
   const selectedText = opts.selectedText == null ? '選択テキスト' : opts.selectedText;
   const selection = opts.hasSelection === false ? null : makeSelection(selectedText);
+  const namedRanges = opts.namedRanges || [];
 
   const doc = {
     getSelection: jest.fn(() => selection),
     addNamedRange: jest.fn((name, range) => ({ _name: name, _range: range })),
+    getNamedRanges: jest.fn(() => namedRanges),
   };
 
   // UI / メニュー（onOpen / showNamedRangeDialog 用）。チェーン呼び出しを再現する。
@@ -54,6 +93,7 @@ function createGasEnv(options) {
   const ui = {
     createAddonMenu: jest.fn(() => menu),
     showModalDialog: jest.fn(),
+    showModelessDialog: jest.fn(),
     alert: jest.fn(),
   };
 
@@ -80,9 +120,28 @@ function createGasEnv(options) {
     createHtmlOutputFromFile: jest.fn(() => htmlOutput),
   };
 
+  // PropertiesService（ハイライトのスナップショット永続化用）。内部ストアを介して
+  // get / set / delete を再現し、別実行をまたいだ保存・復元をテストできるようにする。
+  const propsStore = opts.documentProperties || {};
+  const documentProperties = {
+    getProperty: jest.fn((key) => (key in propsStore ? propsStore[key] : null)),
+    setProperty: jest.fn((key, value) => {
+      propsStore[key] = value;
+      return documentProperties;
+    }),
+    deleteProperty: jest.fn((key) => {
+      delete propsStore[key];
+      return documentProperties;
+    }),
+  };
+  const PropertiesService = {
+    getDocumentProperties: jest.fn(() => documentProperties),
+  };
+
   const globals = {
     DocumentApp,
     HtmlService,
+    PropertiesService,
   };
 
   return {
@@ -90,12 +149,22 @@ function createGasEnv(options) {
     // 検証用に内部参照を公開する
     doc,
     selection,
+    namedRanges,
     menu,
     ui,
     htmlOutput,
     template,
     selectedText,
+    documentProperties,
+    propsStore,
   };
 }
 
-module.exports = { createGasEnv, makeSelection, makeRangeElement };
+module.exports = {
+  createGasEnv,
+  makeSelection,
+  makeRangeElement,
+  makeTextElement,
+  makeNamedRangeElement,
+  makeNamedRange,
+};
