@@ -29,20 +29,31 @@ function makeSelection(text) {
   };
 }
 
-// 背景色ハイライト用のテキスト要素モック。editAsText は自身を返し、
-// getTextAttributeIndices / getBackgroundColor / setBackgroundColor を備える。
+// ハイライト用のテキスト要素モック。editAsText は自身を返し、背景色や
+// テキスト編集（insertText / deleteText）の各 API を備える。
 //   opts.attributeIndices   getTextAttributeIndices() が返す書式変更位置
 //   opts.backgroundColorAt  offset を受け取り背景色を返す関数（既定は常に null）
+// insertText / deleteText は内部のテキストを実際に書き換え、getText に反映する
+// （ラベル置き換え→復元の往復をテストで検証できるようにするため）。
 function makeTextElement(text, opts) {
   const o = opts || {};
+  let current = text;
   const element = {
-    getText: jest.fn(() => text),
+    getText: jest.fn(() => current),
     editAsText: jest.fn(() => element),
     getTextAttributeIndices: jest.fn(() => o.attributeIndices || []),
     getBackgroundColor: jest.fn((offset) =>
       o.backgroundColorAt ? o.backgroundColorAt(offset) : null
     ),
     setBackgroundColor: jest.fn(),
+    insertText: jest.fn((offset, s) => {
+      current = current.slice(0, offset) + s + current.slice(offset);
+      return element;
+    }),
+    deleteText: jest.fn((start, endInclusive) => {
+      current = current.slice(0, start) + current.slice(endInclusive + 1);
+      return element;
+    }),
   };
   return element;
 }
@@ -57,10 +68,12 @@ function makeNamedRangeElement(element, partial, startOffset, endOffsetInclusive
   };
 }
 
-// 名前付き範囲（NamedRange）のモック。getRange().getRangeElements() で構成要素を返す。
-function makeNamedRange(rangeElements) {
+// 名前付き範囲（NamedRange）のモック。getName() で名前、
+// getRange().getRangeElements() で構成要素を返す。
+function makeNamedRange(rangeElements, name) {
   const range = { getRangeElements: jest.fn(() => rangeElements) };
   return {
+    getName: jest.fn(() => (name == null ? 'range' : name)),
     getRange: jest.fn(() => range),
     _range: range,
   };

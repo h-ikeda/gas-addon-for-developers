@@ -89,17 +89,24 @@ function highlightNamedRanges() {
   DocumentApp.getUi().showModelessDialog(htmlOutput, '名前付き範囲のハイライト');
 }
 
-// 各名前付き範囲のテキストへ背景色を付け、元の背景色を復元用スナップショットとして返す。
+// 各名前付き範囲のテキストを「{{ 範囲の名前 }}」ラベルに置き換えて背景色を付け、
+// 復元に必要な情報（元テキスト・挿入したラベル・元の背景色）をスナップショットとして返す。
+//
+// ラベルは範囲の先頭テキスト要素にだけ挿入し、範囲が複数要素にまたがる場合は残りの
+// 要素のテキストを取り除く。こうすることで、範囲全体に対してラベルが一度だけ表示される。
 function applyHighlight(namedRanges, color) {
   const snapshot = [];
   for (let n = 0; n < namedRanges.length; n++) {
-    const rangeElements = namedRanges[n].getRange().getRangeElements();
+    const namedRange = namedRanges[n];
+    const label = formatNamedRangeLabel(namedRange.getName());
+    const rangeElements = namedRange.getRange().getRangeElements();
     const elementSnapshots = [];
+    let labelPlaced = false;
     for (let i = 0; i < rangeElements.length; i++) {
       const rangeElement = rangeElements[i];
       const element = rangeElement.getElement();
 
-      // テキストとして編集できない要素（インライン画像・水平線など）は色を付けられないので飛ばす。
+      // テキストとして編集できない要素（インライン画像・水平線など）は置き換えられないので飛ばす。
       if (!element || typeof element.editAsText !== 'function') {
         continue;
       }
@@ -109,9 +116,26 @@ function applyHighlight(namedRanges, color) {
         continue;
       }
 
+      // 置き換え前に、元の背景色と元テキストを記録しておく（解除時の復元に使う）。
       const runs = computeBackgroundColorRuns(text, bounds.start, bounds.end);
-      text.setBackgroundColor(bounds.start, bounds.end, color);
-      elementSnapshots.push({ runs: runs });
+      const originalText = text.getText().substring(bounds.start, bounds.end + 1);
+
+      // 範囲のテキストを削除し、先頭要素にだけラベルを挿入してハイライト色で塗る。
+      text.deleteText(bounds.start, bounds.end);
+      let inserted = '';
+      if (!labelPlaced) {
+        text.insertText(bounds.start, label);
+        text.setBackgroundColor(bounds.start, bounds.start + label.length - 1, color);
+        inserted = label;
+        labelPlaced = true;
+      }
+
+      elementSnapshots.push({
+        start: bounds.start,
+        originalText: originalText,
+        inserted: inserted,
+        runs: runs,
+      });
     }
     snapshot.push({ elements: elementSnapshots });
   }
@@ -133,7 +157,7 @@ function clearNamedRangeHighlight() {
   props.deleteProperty(HIGHLIGHT_SNAPSHOT_KEY);
 }
 
-// スナップショットに記録した元の背景色を、対応するテキスト要素へ書き戻す。
+// スナップショットに記録した内容を使って、ラベルを元のテキストへ戻し、背景色も復元する。
 // applyHighlight と同じ順序で名前付き範囲・テキスト要素をたどることで対応付ける。
 function restoreHighlight(namedRanges, snapshot) {
   for (let n = 0; n < namedRanges.length && n < snapshot.length; n++) {
@@ -150,6 +174,16 @@ function restoreHighlight(namedRanges, snapshot) {
         continue;
       }
       const text = element.editAsText();
+
+      // ハイライト時に挿入したラベルを取り除き、元テキストを戻してから背景色を復元する。
+      if (elementSnapshot.inserted && elementSnapshot.inserted.length > 0) {
+        text.deleteText(
+          elementSnapshot.start,
+          elementSnapshot.start + elementSnapshot.inserted.length - 1
+        );
+      }
+      text.insertText(elementSnapshot.start, elementSnapshot.originalText);
+
       for (let r = 0; r < elementSnapshot.runs.length; r++) {
         const run = elementSnapshot.runs[r];
         text.setBackgroundColor(run.start, run.end, run.color);
