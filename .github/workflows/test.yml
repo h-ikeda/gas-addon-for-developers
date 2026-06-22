@@ -1,10 +1,13 @@
 name: Test
 
 on:
-  push:
-    branches:
-      - main  # mainへのpush時に実行
-  pull_request:  # 全てのプルリクエストで実行
+  push:  # 全てのブランチへのpush時に実行（PRブランチへの新規コミットを含む）
+  pull_request:  # 全てのプルリクエストで実行（フォークからのPRなどをカバー）
+
+# 同一ブランチで連続してpushされた場合、古い実行をキャンセルして無駄な実行を防ぐ
+concurrency:
+  group: test-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 # GITHUB_TOKEN の権限を最小限（リポジトリの読み取りのみ）に制限する
 permissions:
