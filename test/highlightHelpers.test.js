@@ -6,6 +6,21 @@ const { loadGasScript } = require('./helpers/loadGasScript');
 // 読み込まれるため、共通ローダー経由で取り出して直接テストする。
 const ctx = loadGasScript({});
 
+describe('formatNamedRangeLabel', () => {
+  test('名前を {{ 名前 }} 形式のラベルに整形する', () => {
+    expect(ctx.formatNamedRangeLabel('見出し')).toBe('{{ 見出し }}');
+  });
+
+  test('前後の空白は取り除く', () => {
+    expect(ctx.formatNamedRangeLabel('  greeting  ')).toBe('{{ greeting }}');
+  });
+
+  test('文字列以外（null / undefined）は空の名前として扱う', () => {
+    expect(ctx.formatNamedRangeLabel(null)).toBe('{{  }}');
+    expect(ctx.formatNamedRangeLabel(undefined)).toBe('{{  }}');
+  });
+});
+
 describe('getRangeElementBounds', () => {
   test('部分選択はそのオフセット範囲を返す', () => {
     const rangeElement = {

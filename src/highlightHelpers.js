@@ -6,6 +6,13 @@
 // 名前付き範囲を塗るハイライト色（薄い黄色）。
 const HIGHLIGHT_COLOR = '#fff475';
 
+// 名前付き範囲をハイライトする際に、範囲のテキストの代わりに表示するラベルを組み立てる。
+// 例: 名前が "見出し" なら "{{ 見出し }}" を返す。前後の空白は取り除く。
+function formatNamedRangeLabel(name) {
+  const trimmed = typeof name === 'string' ? name.trim() : '';
+  return '{{ ' + trimmed + ' }}';
+}
+
 // ハイライト前の背景色スナップショットを保存する DocumentProperties のキー。
 const HIGHLIGHT_SNAPSHOT_KEY = 'namedRangeHighlightSnapshot';
 

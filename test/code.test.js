@@ -108,9 +108,9 @@ describe('setNamedRange', () => {
 });
 
 // テキスト要素を1つだけ含む名前付き範囲（要素全体を対象）を作るヘルパー。
-function namedRangeWith(text, opts) {
+function namedRangeWith(text, opts, name) {
   const element = makeTextElement(text, opts);
-  const namedRange = makeNamedRange([makeNamedRangeElement(element, false)]);
+  const namedRange = makeNamedRange([makeNamedRangeElement(element, false)], name);
   return { namedRange, element };
 }
 
@@ -124,20 +124,34 @@ describe('highlightNamedRanges', () => {
     expect(env.ui.showModelessDialog).not.toHaveBeenCalled();
   });
 
-  test('各範囲に背景色を付け、スナップショットを保存し、モードレスダイアログを表示する', () => {
-    const { namedRange, element } = namedRangeWith('Hello');
+  test('各範囲のテキストを {{ 名前 }} ラベルに置き換えて背景色を付け、スナップショットを保存し、モードレスダイアログを表示する', () => {
+    const { namedRange, element } = namedRangeWith('Hello', undefined, 'greeting');
     const { env, ctx } = load({ namedRanges: [namedRange] });
 
     ctx.highlightNamedRanges();
 
-    // テキスト全体（0〜4）にハイライト色が設定される
-    expect(element.setBackgroundColor).toHaveBeenCalledWith(0, 4, '#fff475');
+    // 元のテキスト 'Hello'（0〜4）を削除し、ラベル '{{ greeting }}' を挿入する
+    expect(element.deleteText).toHaveBeenCalledWith(0, 4);
+    expect(element.insertText).toHaveBeenCalledWith(0, '{{ greeting }}');
+    // 挿入したラベル全体（0〜13）にハイライト色が設定される
+    expect(element.setBackgroundColor).toHaveBeenCalledWith(0, 13, '#fff475');
+    // 表示上のテキストはラベルに置き換わっている
+    expect(element.getText()).toBe('{{ greeting }}');
 
-    // 元の背景色（ここでは null）がスナップショットとして保存される
+    // 元テキスト・挿入したラベル・元の背景色がスナップショットとして保存される
     const raw = env.propsStore.namedRangeHighlightSnapshot;
     expect(raw).toBeDefined();
     expect(JSON.parse(raw)).toEqual([
-      { elements: [{ runs: [{ start: 0, end: 4, color: null }] }] },
+      {
+        elements: [
+          {
+            start: 0,
+            originalText: 'Hello',
+            inserted: '{{ greeting }}',
+            runs: [{ start: 0, end: 4, color: null }],
+          },
+        ],
+      },
     ]);
 
     // 非ブロッキングのモードレスダイアログを開く
@@ -146,14 +160,24 @@ describe('highlightNamedRanges', () => {
     expect(env.ui.showModelessDialog).toHaveBeenCalledWith(env.htmlOutput, '名前付き範囲のハイライト');
   });
 
-  test('既にハイライト中なら、先に元へ戻してから貼り直す（ハイライト色を元色として記録しない）', () => {
-    // 直前のハイライトで全体を黄色にしていた、という状態のスナップショットを用意する
+  test('既にハイライト中なら、先に元へ戻してから貼り直す（ラベルを元テキストとして記録しない）', () => {
+    // 直前のハイライトで 'Hello' をラベルに置き換えていた、という状態のスナップショットを用意する
     const previous = JSON.stringify([
-      { elements: [{ runs: [{ start: 0, end: 4, color: '#ff0000' }] }] },
+      {
+        elements: [
+          {
+            start: 0,
+            originalText: 'Hello',
+            inserted: '{{ greeting }}',
+            runs: [{ start: 0, end: 4, color: '#ff0000' }],
+          },
+        ],
+      },
     ]);
-    const { namedRange, element } = namedRangeWith('Hello', {
-      backgroundColorAt: () => '#fff475', // 現在はハイライト色で塗られている
-    });
+    // 現在はラベルが表示され、ハイライト色で塗られている状態
+    const { namedRange, element } = namedRangeWith('{{ greeting }}', {
+      backgroundColorAt: () => '#fff475',
+    }, 'greeting');
     const { ctx } = load({
       namedRanges: [namedRange],
       documentProperties: { namedRangeHighlightSnapshot: previous },
@@ -161,9 +185,14 @@ describe('highlightNamedRanges', () => {
 
     ctx.highlightNamedRanges();
 
-    // 最初に元色（赤）へ復元し、その後あらためてハイライト色を適用している
+    // まず元へ戻す：ラベル（0〜13）を削除→元テキスト 'Hello' を挿入→元色（赤）を復元
+    expect(element.deleteText).toHaveBeenNthCalledWith(1, 0, 13);
+    expect(element.insertText).toHaveBeenNthCalledWith(1, 0, 'Hello');
     expect(element.setBackgroundColor).toHaveBeenNthCalledWith(1, 0, 4, '#ff0000');
-    expect(element.setBackgroundColor).toHaveBeenNthCalledWith(2, 0, 4, '#fff475');
+    // その後あらためてラベルを貼り直す：元テキスト（0〜4）を削除→ラベルを挿入→ハイライト色
+    expect(element.deleteText).toHaveBeenNthCalledWith(2, 0, 4);
+    expect(element.insertText).toHaveBeenNthCalledWith(2, 0, '{{ greeting }}');
+    expect(element.setBackgroundColor).toHaveBeenNthCalledWith(2, 0, 13, '#fff475');
   });
 });
 
@@ -174,15 +203,20 @@ describe('clearNamedRangeHighlight', () => {
 
     ctx.clearNamedRangeHighlight();
 
+    expect(element.deleteText).not.toHaveBeenCalled();
+    expect(element.insertText).not.toHaveBeenCalled();
     expect(element.setBackgroundColor).not.toHaveBeenCalled();
     expect(env.documentProperties.deleteProperty).not.toHaveBeenCalled();
   });
 
-  test('保存した元の背景色へ戻し、スナップショットを削除する', () => {
+  test('ラベルを元テキストへ戻し、背景色も復元してスナップショットを削除する', () => {
     const snapshot = JSON.stringify([
       {
         elements: [
           {
+            start: 0,
+            originalText: 'Hello',
+            inserted: '{{ greeting }}',
             runs: [
               { start: 0, end: 2, color: '#ff0000' },
               { start: 3, end: 4, color: null },
@@ -191,7 +225,8 @@ describe('clearNamedRangeHighlight', () => {
         ],
       },
     ]);
-    const { namedRange, element } = namedRangeWith('Hello');
+    // 現在はラベルが表示されている状態
+    const { namedRange, element } = namedRangeWith('{{ greeting }}', undefined, 'greeting');
     const { env, ctx } = load({
       namedRanges: [namedRange],
       documentProperties: { namedRangeHighlightSnapshot: snapshot },
@@ -199,6 +234,11 @@ describe('clearNamedRangeHighlight', () => {
 
     ctx.clearNamedRangeHighlight();
 
+    // ラベル（0〜13）を削除して元テキスト 'Hello' を戻す
+    expect(element.deleteText).toHaveBeenCalledWith(0, 13);
+    expect(element.insertText).toHaveBeenCalledWith(0, 'Hello');
+    expect(element.getText()).toBe('Hello');
+    // 元の背景色も復元する
     expect(element.setBackgroundColor).toHaveBeenCalledWith(0, 2, '#ff0000');
     expect(element.setBackgroundColor).toHaveBeenCalledWith(3, 4, null);
     expect(env.documentProperties.deleteProperty).toHaveBeenCalledWith('namedRangeHighlightSnapshot');
