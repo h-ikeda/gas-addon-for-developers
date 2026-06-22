@@ -176,13 +176,17 @@ function restoreHighlight(namedRanges, snapshot) {
       const text = element.editAsText();
 
       // ハイライト時に挿入したラベルを取り除き、元テキストを戻してから背景色を復元する。
+      // inserted / originalText は本変更で追加したフィールドのため、旧形式のスナップショット
+      // （背景色のみ記録）でも壊れないよう、存在を確認してからテキストを操作する。
       if (elementSnapshot.inserted && elementSnapshot.inserted.length > 0) {
         text.deleteText(
           elementSnapshot.start,
           elementSnapshot.start + elementSnapshot.inserted.length - 1
         );
       }
-      text.insertText(elementSnapshot.start, elementSnapshot.originalText);
+      if (elementSnapshot.originalText) {
+        text.insertText(elementSnapshot.start, elementSnapshot.originalText);
+      }
 
       for (let r = 0; r < elementSnapshot.runs.length; r++) {
         const run = elementSnapshot.runs[r];
